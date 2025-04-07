@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Love Calculator</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        #container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        #ui {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+        }
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+        button {
+            background-color: #ff4081;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin-top: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #f50057;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            min-height: 20px;
+        }
+        #compatibility {
+            font-size: 32px;
+            margin: 10px 0;
+            color: #ff4081;
+        }
+        #message {
+            font-size: 16px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="ui">
+        <h2>3D Love Calculator</h2>
+        <input type="text" id="name1" placeholder="Enter your name">
+        <input type="text" id="name2" placeholder="Enter your partner's name">
+        <button id="calculate">Calculate Love</button>
+        <div id="result">
+            <div id="compatibility"></div>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Set up the scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // Background with stars
+        const starGeometry = new THREE.BufferGeometry();
+        const starMaterial = new THREE.PointsMaterial({
+            color: 0xFFFFFF,
+            size: 0.1
+        });
+
+        const starVertices = [];
+        for (let i = 0; i < 10000; i++) {
+            const x = (Math.random() - 0.5) * 2000;
+            const y = (Math.random() - 0.5) * 2000;
+            const z = (Math.random() - 0.5) * 2000;
+            starVertices.push(x, y, z);
+        }
+
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Heart geometry
+        function createHeartShape() {
+            const shape = new THREE.Shape();
+            const x = 0, y = 0;
+            
+            shape.moveTo(x, y);
+            shape.bezierCurveTo(x + 2.5, y + 2.5, x + 2.0, y + 3.0, x, y + 3.0);
+            shape.bezierCurveTo(x - 3.0, y + 3.0, x - 3.0, y - 1.5, x - 3.0, y - 1.5);
+            shape.bezierCurveTo(x - 3.0, y - 4.5, x - 1.0, y - 4.5, x, y - 3.0);
+            shape.bezierCurveTo(x + 1.0, y - 4.5, x + 3.0, y - 4.5, x + 3.0, y - 1.5);
+            shape.bezierCurveTo(x + 3.0, y - 1.5, x + 3.0, y + 3.0, x, y + 3.0);
+            
+            return shape;
+        }
+
+        const heartShape = createHeartShape();
+        const extrudeSettings = {
+            depth: 1,
+            bevelEnabled: true,
+            bevelSegments: 2,
+            steps: 2,
+            bevelSize: 0.3,
+            bevelThickness: 0.3
+        };
+
+        const heartGeometry = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+        const heartMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xff2166,
+            shininess: 100,
+            emissive: 0x440922,
+            emissiveIntensity: 0.2
+        });
+        
+        const heart = new THREE.Mesh(heartGeometry, heartMaterial);
+        heart.scale.set(0.7, 0.7, 0.7);
+        heart.rotation.x = Math.PI;
+        heart.visible = false;
+        scene.add(heart);
+
+        // Create broken heart geometry
+        function createBrokenHeartShape() {
+            // Left half of heart
+            const leftShape = new THREE.Shape();
+            const x = 0, y = 0;
+            
+            leftShape.moveTo(x, y);
+            leftShape.bezierCurveTo(x - 3.0, y + 3.0, x - 3.0, y - 1.5, x - 3.0, y - 1.5);
+            leftShape.bezierCurveTo(x - 3.0, y - 4.5, x - 1.0, y - 4.5, x, y - 3.0);
+            leftShape.lineTo(x, y);
+            
+            return leftShape;
+        }
+
+        const brokenHeartLeftGeometry = new THREE.ExtrudeGeometry(createBrokenHeartShape(), extrudeSettings);
+        const brokenHeartLeftMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x333333,
+            shininess: 50,
+            emissive: 0x111111,
+            emissiveIntensity: 0.2
+        });
+        
+        const brokenHeartLeft = new THREE.Mesh(brokenHeartLeftGeometry, brokenHeartLeftMaterial);
+        brokenHeartLeft.scale.set(0.7, 0.7, 0.7);
+        brokenHeartLeft.rotation.x = Math.PI;
+        brokenHeartLeft.rotation.z = -0.2;
+        brokenHeartLeft.position.x = -0.5;
+        brokenHeartLeft.visible = false;
+        scene.add(brokenHeartLeft);
+
+        // Right half of broken heart
+        function createBrokenHeartRightShape() {
+            const rightShape = new THREE.Shape();
+            const x = 0, y = 0;
+            
+            rightShape.moveTo(x, y);
+            rightShape.bezierCurveTo(x + 2.5, y + 2.5, x + 2.0, y + 3.0, x, y + 3.0);
+            rightShape.lineTo(x, y + 1.5);
+            rightShape.lineTo(x, y);
+            rightShape.bezierCurveTo(x + 1.0, y - 4.5, x + 3.0, y - 4.5, x + 3.0, y - 1.5);
+            rightShape.bezierCurveTo(x + 3.0, y - 1.5, x + 3.0, y + 3.0, x, y + 3.0);
+            rightShape.lineTo(x, y);
+            
+            return rightShape;
+        }
+
+        const brokenHeartRightGeometry = new THREE.ExtrudeGeometry(createBrokenHeartRightShape(), extrudeSettings);
+        const brokenHeartRightMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x333333,
+            shininess: 50,
+            emissive: 0x111111,
+            emissiveIntensity: 0.2
+        });
+        
+        const brokenHeartRight = new THREE.Mesh(brokenHeartRightGeometry, brokenHeartRightMaterial);
+        brokenHeartRight.scale.set(0.7, 0.7, 0.7);
+        brokenHeartRight.rotation.x = Math.PI;
+        brokenHeartRight.rotation.z = 0.2;
+        brokenHeartRight.position.x = 0.5;
+        brokenHeartRight.visible = false;
+        scene.add(brokenHeartRight);
+
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xff0000, 1, 100);
+        pointLight.position.set(0, 0, 10);
+        scene.add(pointLight);
+
+        const pointLight2 = new THREE.PointLight(0x0000ff, 1, 100);
+        pointLight2.position.set(10, 0, 10);
+        scene.add(pointLight2);
+
+        // Position camera
+        camera.position.z = 15;
+
+        // Heart particles for special effects
+        const particles = [];
+        let particleSystem;
+
+        function createParticles(count, color) {
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleMaterial = new THREE.PointsMaterial({
+                color: color,
+                size: 0.2,
+                transparent: true
+            });
+
+            const particlePositions = new Float32Array(count * 3);
+            const particleVelocities = [];
+
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                particlePositions[i3] = (Math.random() - 0.5) * 0.1;
+                particlePositions[i3 + 1] = (Math.random() - 0.5) * 0.1;
+                particlePositions[i3 + 2] = (Math.random() - 0.5) * 0.1;
+
+                particleVelocities.push({
+                    x: (Math.random() - 0.5) * 0.05,
+                    y: (Math.random() - 0.5) * 0.05,
+                    z: (Math.random() - 0.5) * 0.05
+                });
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+
+            particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+            particleSystem.userData.velocities = particleVelocities;
+            
+            return particleSystem;
+        }
+
+        // Animation logic
+        let animateHeartGrow = false;
+        let heartScale = 0;
+        let animationComplete = false;
+        let colorShift = 0;
+        let animateBrokenHeart = false;
+        let brokenHeartOffsetX = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate the stars slowly
+            stars.rotation.y += 0.0005;
+            
+            // Heart animations based on state
+            if (heart.visible) {
+                heart.rotation.y += 0.01;
+                
+                if (animateHeartGrow && heartScale < 1) {
+                    heartScale += 0.01;
+                    heart.scale.set(heartScale, heartScale, heartScale);
+                    
+                    if (heartScale >= 0.7) {
+                        animationComplete = true;
+                    }
+                }
+                
+                // Color animation for high compatibility
+                if (animationComplete && heart.userData.compatibility > 80) {
+                    colorShift += 0.01;
+                    heart.material.color.setHSL((Math.sin(colorShift) * 0.1) + 0.9, 0.8, 0.6);
+                    
+                    // Update particle positions
+                    if (particleSystem) {
+                        const positions = particleSystem.geometry.attributes.position.array;
+                        const velocities = particleSystem.userData.velocities;
+                        
+                        for (let i = 0; i < positions.length / 3; i++) {
+                            const i3 = i * 3;
+                            
+                            positions[i3] += velocities[i].x;
+                            positions[i3 + 1] += velocities[i].y;
+                            positions[i3 + 2] += velocities[i].z;
+                            
+                            // Reset particles that go too far
+                            const distance = Math.sqrt(
+                                positions[i3] * positions[i3] + 
+                                positions[i3 + 1] * positions[i3 + 1] + 
+                                positions[i3 + 2] * positions[i3 + 2]
+                            );
+                            
+                            if (distance > 5) {
+                                positions[i3] = (Math.random() - 0.5) * 0.1;
+                                positions[i3 + 1] = (Math.random() - 0.5) * 0.1;
+                                positions[i3 + 2] = (Math.random() - 0.5) * 0.1;
+                            }
+                        }
+                        
+                        particleSystem.geometry.attributes.position.needsUpdate = true;
+                    }
+                }
+            }
+            
+            // Broken heart animation
+            if (brokenHeartLeft.visible && brokenHeartRight.visible) {
+                brokenHeartLeft.rotation.y += 0.01;
+                brokenHeartRight.rotation.y += 0.01;
+                
+                if (animateBrokenHeart && brokenHeartOffsetX < 2) {
+                    brokenHeartOffsetX += 0.02;
+                    brokenHeartLeft.position.x = -0.5 - brokenHeartOffsetX;  
+                    brokenHeartRight.position.x = 0.5 + brokenHeartOffsetX;
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Love calculation logic
+        document.getElementById('calculate').addEventListener('click', () => {
+            const name1 = document.getElementById('name1').value.trim();
+            const name2 = document.getElementById('name2').value.trim();
+            
+            if (name1 === '' || name2 === '') {
+                document.getElementById('message').innerHTML = 'Please enter both names';
+                return;
+            }
+            
+            // Remove any existing particle system
+            if (particleSystem) {
+                scene.remove(particleSystem);
+            }
+            
+            // Reset visibility of hearts
+            heart.visible = false;
+            brokenHeartLeft.visible = false;
+            brokenHeartRight.visible = false;
+            
+            // Check for special cases first
+            const name1Lower = name1.toLowerCase();
+            const name2Lower = name2.toLowerCase();
+            
+            // Special case for Suraj
+            if (name1Lower === 'suraj' || name2Lower === 'suraj') {
+                // Show broken heart for Suraj
+                brokenHeartLeft.visible = true;
+                brokenHeartRight.visible = true;
+                brokenHeartLeft.position.x = -0.5;
+                brokenHeartRight.position.x = 0.5;
+                brokenHeartOffsetX = 0;
+                animateBrokenHeart = true;
+                
+                document.getElementById('compatibility').textContent = '0%';
+                document.getElementById('message').innerHTML = "There is no match for you. You are not compatible with this world.";
+                return;
+            }
+            
+            // Special case for Sandesh
+            if (name1Lower === 'sandesh' || name2Lower === 'sandesh') {
+                const otherName = name1Lower === 'sandesh' ? name2Lower : name1Lower;
+                
+                if (otherName.startsWith('prausna paudel')) {
+                    // Great match for Sandesh and Prausna
+                    heart.visible = true;
+                    heart.scale.set(0.1, 0.1, 0.1);
+                    heart.userData.compatibility = 100;
+                    heartScale = 0.1;
+                    animateHeartGrow = true;
+                    animationComplete = false;
+                    
+                    // Add special effects for high compatibility
+                    particleSystem = createParticles(500, 0xff77ff);
+                    particleSystem.position.copy(heart.position);
+                    scene.add(particleSystem);
+                    
+                    heart.material.color.set(0xff0066);
+                    heart.material.emissive.set(0x660033);
+                    
+                    document.getElementById('compatibility').textContent = '100%';
+                    document.getElementById('message').innerHTML = "Perfect match! Sandesh only has chemistry with Prausna Paudel!";
+                } else {
+                    // No match for Sandesh with anyone else
+                    brokenHeartLeft.visible = true;
+                    brokenHeartRight.visible = true;
+                    brokenHeartLeft.position.x = -0.5;
+                    brokenHeartRight.position.x = 0.5;
+                    brokenHeartOffsetX = 0;
+                    animateBrokenHeart = true;
+                    
+                    document.getElementById('compatibility').textContent = '0%';
+                    document.getElementById('message').innerHTML = "Sandesh only has chemistry with a girl named Prausna Paudel.";
+                }
+                return;
+            }
+            
+            // Normal love calculation for other names
+            let compatibility = calculateLoveScore(name1Lower, name2Lower);
+            
+            // Show heart and start animation
+            heart.visible = true;
+            heart.scale.set(0.1, 0.1, 0.1);
+            heart.userData.compatibility = compatibility;
+            heartScale = 0.1;
+            animateHeartGrow = true;
+            animationComplete = false;
+            
+            // Display result
+            document.getElementById('compatibility').textContent = `${compatibility}%`;
+            document.getElementById('message').innerHTML = getLoveMessage(compatibility);
+            
+            // Add special effects for high compatibility
+            if (compatibility > 80) {
+                particleSystem = createParticles(500, 0xff77ff);
+                particleSystem.position.copy(heart.position);
+                scene.add(particleSystem);
+            }
+            
+            // Adjust heart color based on compatibility
+            if (compatibility < 30) {
+                heart.material.color.set(0x666666);
+                heart.material.emissive.set(0x222222);
+            } else if (compatibility < 60) {
+                heart.material.color.set(0xff9999);
+                heart.material.emissive.set(0x330000);
+            } else if (compatibility < 80) {
+                heart.material.color.set(0xff5555);
+                heart.material.emissive.set(0x440000);
+            } else {
+                heart.material.color.set(0xff0066);
+                heart.material.emissive.set(0x660033);
+            }
+        });
+
+        // Love compatibility calculation algorithm
+        function calculateLoveScore(name1, name2) {
+            // Add names together
+            const combined = name1 + name2;
+            
+            // Calculate some pseudo-scientific metrics
+            let score = 0;
+            
+            // Common letters
+            const set1 = new Set(name1);
+            const set2 = new Set(name2);
+            const intersection = new Set([...set1].filter(x => set2.has(x)));
+            score += (intersection.size / Math.max(set1.size, set2.size)) * 25;
+            
+            // Name length similarity
+            const lengthDiff = Math.abs(name1.length - name2.length);
+            score += (1 - (lengthDiff / Math.max(name1.length, name2.length))) * 15;
+            
+            // Vowel harmony
+            const vowels = "aeiou";
+            const vowelsInName1 = [...name1].filter(char => vowels.includes(char)).length / name1.length;
+            const vowelsInName2 = [...name2].filter(char => vowels.includes(char)).length / name2.length;
+            score += (1 - Math.abs(vowelsInName1 - vowelsInName2)) * 20;
+            
+            // First letter compatibility
+            if (name1[0] === name2[0]) {
+                score += 5;
+            }
+            
+            // Last letter compatibility
+            if (name1[name1.length - 1] === name2[name2.length - 1]) {
+                score += 5;
+            }
+            
+            // Add some randomness for fun
+            score += Math.random() * 30;
+            
+            // Ensure score is between 0-100
+            return Math.min(100, Math.max(0, Math.round(score)));
+        }
+
+        // Get appropriate message based on compatibility score
+        function getLoveMessage(score) {
+            if (score < 20) {
+                return "The stars aren't aligned for you two. But remember, love isn't just about compatibility scores!";
+            } else if (score < 40) {
+                return "There might be some challenges ahead. Friendship first could be the way to go.";
+            } else if (score < 60) {
+                return "There's potential here! With some effort and understanding, your relationship could flourish.";
+            } else if (score < 80) {
+                return "You two have great chemistry! Your connection shows real promise for a beautiful relationship.";
+            } else if (score < 95) {
+                return "Amazing compatibility! You might have found your perfect match - cherish this special connection!";
+            } else {
+                return "Soulmates! This rare connection is truly magical. The universe has brought together a perfect pair!";
+            }
+        }
+
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
